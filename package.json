@@ -1,0 +1,25 @@
+{
+  "name": "skillwarz-game",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "server": "node server.js",
+    "start": "node server.js",
+    "build": "vite build"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "vite": "^8.0.10"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.3",
+    "three": "^0.184.0",
+    "three-mesh-bvh": "^0.9.9"
+  }
+}

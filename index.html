@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BulletStorm Arena - 3D FPS Shooter</title>
+  <meta name="description" content="BulletStorm Arena - A fast-paced 3D first-person shooter with advanced movement, multiple game modes, and intense arena combat.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Loading Screen -->
+  <div id="loading-screen">
+    <div class="loader-content">
+      <div class="game-logo">
+        <h1 class="logo-text">BULLET<span class="logo-accent">STORM</span></h1>
+        <p class="logo-subtitle">A R E N A</p>
+      </div>
+      <div class="loader-bar-container">
+        <div class="loader-bar" id="loader-bar"></div>
+      </div>
+      <p class="loader-text" id="loader-text">Initializing Engine...</p>
+      <div class="loader-tips">
+        <p id="loader-tip">TIP: Use slide (C while sprinting) to move faster and dodge incoming fire</p>
+      </div>
+    </div>
+    <div class="loader-particles" id="loader-particles"></div>
+  </div>
+
+  <!-- Main Menu -->
+  <div id="main-menu" class="hidden">
+    <div class="menu-bg-effects">
+      <div class="menu-grid"></div>
+      <div class="menu-particles"></div>
+    </div>
+    <div class="menu-container">
+      <div class="menu-header">
+        <h1 class="menu-logo">BULLET<span>STORM</span></h1>
+        <p class="menu-version">v2.0.0 ALPHA</p>
+      </div>
+      <nav class="menu-nav">
+        <button class="menu-btn primary" id="btn-play" data-sound="click">
+          <span class="btn-icon">▶</span>
+          <span class="btn-text">PLAY</span>
+          <span class="btn-glow"></span>
+        </button>
+        <button class="menu-btn" id="btn-training" data-sound="click">
+          <span class="btn-icon">🎯</span>
+          <span class="btn-text">TRAINING HUB</span>
+          <span class="btn-glow"></span>
+        </button>
+        <button class="menu-btn" id="btn-weapons" data-sound="click">
+          <span class="btn-icon">🔫</span>
+          <span class="btn-text">WEAPONS</span>
+          <span class="btn-glow"></span>
+        </button>
+        <button class="menu-btn" id="btn-customize" data-sound="click">
+          <span class="btn-icon">👤</span>
+          <span class="btn-text">CUSTOMIZE</span>
+          <span class="btn-glow"></span>
+        </button>
+        <button class="menu-btn" id="btn-settings" data-sound="click">
+          <span class="btn-icon">⚙</span>
+          <span class="btn-text">SETTINGS</span>
+          <span class="btn-glow"></span>
+        </button>
+      </nav>
+      <div class="menu-footer">
+        <div class="player-info">
+          <div class="player-avatar" id="player-avatar">
+            <div class="avatar-rank">★</div>
+          </div>
+          <div class="player-details">
+            <span class="player-name" id="player-name-display">SOLDIER_001</span>
+            <span class="player-level">LEVEL <span id="player-level">1</span></span>
+            <div class="xp-bar-mini">
+              <div class="xp-fill-mini" id="xp-fill-mini" style="width:0%"></div>
+            </div>
+          </div>
+        </div>
+        <div class="menu-social">
+          <span class="online-count">🟢 <span id="online-count">0</span> Online</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Game Mode Selection -->
+  <div id="mode-select" class="hidden overlay-panel">
+    <div class="panel-header">
+      <h2>SELECT GAME MODE</h2>
+      <button class="close-btn" id="close-mode">✕</button>
+    </div>
+    <div class="mode-grid">
+      <div class="mode-card" data-mode="deathmatch">
+        <div class="mode-icon">💀</div>
+        <h3>DEATHMATCH</h3>
+        <p>Free-for-all combat. Kill to score. Top fragger wins.</p>
+        <div class="mode-info">
+          <span>Players: 2-12</span>
+          <span>Time: 10 min</span>
+        </div>
+      </div>
+      <div class="mode-card" data-mode="team-deathmatch">
+        <div class="mode-icon">⚔️</div>
+        <h3>TEAM DEATHMATCH</h3>
+        <p>Two teams clash. Coordinate attacks to dominate.</p>
+        <div class="mode-info">
+          <span>Teams: 2</span>
+          <span>Time: 10 min</span>
+        </div>
+      </div>
+      <div class="mode-card" data-mode="gun-game">
+        <div class="mode-icon">🔄</div>
+        <h3>GUN GAME</h3>
+        <p>Each kill advances your weapon. First to cycle all weapons wins.</p>
+        <div class="mode-info">
+          <span>Players: 2-12</span>
+          <span>Weapons: 20</span>
+        </div>
+      </div>
+      <div class="mode-card" data-mode="skull-hunt">
+        <div class="mode-icon">💎</div>
+        <h3>SKULL HUNT</h3>
+        <p>Collect skulls from fallen enemies. Bank them to score.</p>
+        <div class="mode-info">
+          <span>Players: 2-12</span>
+          <span>Target: 50</span>
+        </div>
+      </div>
+      <div class="mode-card" data-mode="elimination">
+        <div class="mode-icon">🏆</div>
+        <h3>ELIMINATION</h3>
+        <p>No respawns. Last team standing takes the round.</p>
+        <div class="mode-info">
+          <span>Teams: 2</span>
+          <span>Rounds: 13</span>
+        </div>
+      </div>
+      <div class="mode-card" data-mode="ctf">
+        <div class="mode-icon">🚩</div>
+        <h3>CAPTURE THE FLAG</h3>
+        <p>Steal the enemy flag and bring it home to score.</p>
+        <div class="mode-info">
+          <span>Teams: 2</span>
+          <span>Score: 5</span>
+        </div>
+      </div>
+    </div>
+    <div class="panel-footer">
+      <button class="action-btn" id="btn-start-game">START MATCH</button>
+    </div>
+  </div>
+
+  <!-- Map Selection -->
+  <div id="map-select" class="hidden overlay-panel">
+    <div class="panel-header">
+      <h2>SELECT MAP</h2>
+      <button class="close-btn" id="close-map">✕</button>
+    </div>
+    <div class="map-grid" id="map-grid">
+      <!-- Maps populated by JS -->
+    </div>
+    <div class="panel-footer">
+      <button class="action-btn" id="btn-confirm-map">DEPLOY</button>
+    </div>
+  </div>
+
+  <!-- Weapons Loadout -->
+  <div id="weapons-panel" class="hidden overlay-panel">
+    <div class="panel-header">
+      <h2>WEAPONS LOADOUT</h2>
+      <button class="close-btn" id="close-weapons">✕</button>
+    </div>
+    <div class="loadout-container">
+      <div class="loadout-slots">
+        <div class="slot-category">
+          <h3>PRIMARY</h3>
+          <div class="weapon-grid" id="primary-weapons"></div>
+        </div>
+        <div class="slot-category">
+          <h3>SECONDARY</h3>
+          <div class="weapon-grid" id="secondary-weapons"></div>
+        </div>
+        <div class="slot-category">
+          <h3>MELEE</h3>
+          <div class="weapon-grid" id="melee-weapons"></div>
+        </div>
+      </div>
+      <div class="weapon-preview">
+        <div class="weapon-3d-view" id="weapon-preview-3d"></div>
+        <div class="weapon-stats" id="weapon-stats">
+          <h3 id="weapon-preview-name">Select a weapon</h3>
+          <div class="stat-bar">
+            <span>DAMAGE</span>
+            <div class="stat-fill-container"><div class="stat-fill" id="stat-damage"></div></div>
+          </div>
+          <div class="stat-bar">
+            <span>FIRE RATE</span>
+            <div class="stat-fill-container"><div class="stat-fill" id="stat-firerate"></div></div>
+          </div>
+          <div class="stat-bar">
+            <span>ACCURACY</span>
+            <div class="stat-fill-container"><div class="stat-fill" id="stat-accuracy"></div></div>
+          </div>
+          <div class="stat-bar">
+            <span>RANGE</span>
+            <div class="stat-fill-container"><div class="stat-fill" id="stat-range"></div></div>
+          </div>
+          <div class="stat-bar">
+            <span>MOBILITY</span>
+            <div class="stat-fill-container"><div class="stat-fill" id="stat-mobility"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Panel -->
+  <div id="settings-panel" class="hidden overlay-panel">
+    <div class="panel-header">
+      <h2>SETTINGS</h2>
+      <button class="close-btn" id="close-settings">✕</button>
+    </div>
+    <div class="settings-container">
+      <div class="settings-section">
+        <h3>CONTROLS</h3>
+        <div class="setting-row">
+          <label>Mouse Sensitivity</label>
+          <input type="range" min="1" max="20" value="5" id="sensitivity-slider">
+          <span id="sensitivity-value">5</span>
+        </div>
+        <div class="setting-row">
+          <label>Invert Y-Axis</label>
+          <label class="toggle"><input type="checkbox" id="invert-y"><span class="toggle-slider"></span></label>
+        </div>
+      </div>
+      <div class="settings-section">
+        <h3>GRAPHICS</h3>
+        <div class="setting-row">
+          <label>Quality</label>
+          <select id="quality-select">
+            <option value="low">Low</option>
+            <option value="medium" selected>Medium</option>
+            <option value="high">High</option>
+            <option value="ultra">Ultra</option>
+          </select>
+        </div>
+        <div class="setting-row">
+          <label>Shadows</label>
+          <label class="toggle"><input type="checkbox" id="shadows-toggle" checked><span class="toggle-slider"></span></label>
+        </div>
+        <div class="setting-row">
+          <label>Post Processing</label>
+          <label class="toggle"><input type="checkbox" id="postfx-toggle" checked><span class="toggle-slider"></span></label>
+        </div>
+        <div class="setting-row">
+          <label>FOV</label>
+          <input type="range" min="60" max="120" value="90" id="fov-slider">
+          <span id="fov-value">90</span>
+        </div>
+      </div>
+      <div class="settings-section">
+        <h3>AUDIO</h3>
+        <div class="setting-row">
+          <label>Master Volume</label>
+          <input type="range" min="0" max="100" value="80" id="volume-master">
+          <span id="volume-master-value">80</span>
+        </div>
+        <div class="setting-row">
+          <label>SFX Volume</label>
+          <input type="range" min="0" max="100" value="100" id="volume-sfx">
+          <span id="volume-sfx-value">100</span>
+        </div>
+        <div class="setting-row">
+          <label>Music Volume</label>
+          <input type="range" min="0" max="100" value="50" id="volume-music">
+          <span id="volume-music-value">50</span>
+        </div>
+      </div>
+      <div class="settings-section">
+        <h3>PLAYER</h3>
+        <div class="setting-row">
+          <label>Player Name</label>
+          <input type="text" id="player-name-input" value="SOLDIER_001" maxlength="16" class="text-input">
+        </div>
+        <div class="setting-row">
+          <label>Crosshair Style</label>
+          <select id="crosshair-select">
+            <option value="cross">Cross</option>
+            <option value="dot">Dot</option>
+            <option value="circle">Circle</option>
+            <option value="dynamic">Dynamic</option>
+          </select>
+        </div>
+        <div class="setting-row">
+          <label>Crosshair Color</label>
+          <input type="color" value="#00ff88" id="crosshair-color">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Customize Panel -->
+  <div id="customize-panel" class="hidden overlay-panel">
+    <div class="panel-header">
+      <h2>CUSTOMIZE CHARACTER</h2>
+      <button class="close-btn" id="close-customize">✕</button>
+    </div>
+    <div class="customize-container">
+      <div class="class-selection">
+        <h3>SELECT CLASS</h3>
+        <div class="class-grid">
+          <div class="class-card selected" data-class="assault">
+            <div class="class-icon">🔫</div>
+            <h4>ASSAULT</h4>
+            <p>Balanced fighter. Good at all ranges.</p>
+            <div class="class-perks">
+              <span>+10% Fire Rate</span>
+              <span>Frag Grenade</span>
+            </div>
+          </div>
+          <div class="class-card" data-class="recon">
+            <div class="class-icon">🎯</div>
+            <h4>RECON</h4>
+            <p>Long-range specialist. Detect enemies.</p>
+            <div class="class-perks">
+              <span>+15% Range</span>
+              <span>Motion Sensor</span>
+            </div>
+          </div>
+          <div class="class-card" data-class="engineer">
+            <div class="class-icon">🔧</div>
+            <h4>ENGINEER</h4>
+            <p>Support class. Deployable cover &amp; turret.</p>
+            <div class="class-perks">
+              <span>+20% Armor</span>
+              <span>Auto Turret</span>
+            </div>
+          </div>
+          <div class="class-card" data-class="ghost">
+            <div class="class-icon">👻</div>
+            <h4>GHOST</h4>
+            <p>Stealth operative. Silent and fast.</p>
+            <div class="class-perks">
+              <span>+20% Speed</span>
+              <span>Cloak Ability</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="skin-selection">
+        <h3>CHARACTER SKINS</h3>
+        <div class="skin-grid" id="skin-grid">
+          <div class="skin-card selected" data-skin="default" style="background: linear-gradient(135deg, #2a3a4a, #1a2a3a)">
+            <span>DEFAULT</span>
+          </div>
+          <div class="skin-card" data-skin="neon" style="background: linear-gradient(135deg, #00ff88, #0088ff)">
+            <span>NEON</span>
+          </div>
+          <div class="skin-card" data-skin="crimson" style="background: linear-gradient(135deg, #ff3366, #ff0044)">
+            <span>CRIMSON</span>
+          </div>
+          <div class="skin-card" data-skin="arctic" style="background: linear-gradient(135deg, #88ccff, #ffffff)">
+            <span>ARCTIC</span>
+          </div>
+          <div class="skin-card" data-skin="gold" style="background: linear-gradient(135deg, #ffd700, #ff8800)">
+            <span>GOLD</span>
+            <div class="skin-badge">RARE</div>
+          </div>
+          <div class="skin-card" data-skin="void" style="background: linear-gradient(135deg, #8800ff, #440088)">
+            <span>VOID</span>
+            <div class="skin-badge legendary">LEGENDARY</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- In-Game HUD -->
+  <div id="game-hud" class="hidden">
+    <!-- Health & Armor -->
+    <div class="hud-bottom-left">
+      <div class="health-display">
+        <div class="health-icon">✚</div>
+        <div class="health-bar-container">
+          <div class="health-bar" id="health-bar"></div>
+          <span class="health-text" id="health-text">100</span>
+        </div>
+      </div>
+      <div class="armor-display">
+        <div class="armor-icon">🛡</div>
+        <div class="armor-bar-container">
+          <div class="armor-bar" id="armor-bar"></div>
+          <span class="armor-text" id="armor-text">100</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ammo -->
+    <div class="hud-bottom-right">
+      <div class="ammo-display">
+        <span class="ammo-current" id="ammo-current">30</span>
+        <span class="ammo-separator">/</span>
+        <span class="ammo-reserve" id="ammo-reserve">120</span>
+      </div>
+      <div class="weapon-name" id="hud-weapon-name">AK-47</div>
+      <div class="grenade-display">
+        <div class="grenade-slot">
+          <span class="grenade-icon">💣</span>
+          <span class="grenade-count" id="grenade-primary">2</span>
+        </div>
+        <div class="grenade-slot">
+          <span class="grenade-icon">💨</span>
+          <span class="grenade-count" id="grenade-secondary">1</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top HUD -->
+    <div class="hud-top">
+      <div class="match-timer">
+        <span id="match-timer">10:00</span>
+      </div>
+      <div class="score-display">
+        <div class="team-score team-blue" id="score-blue">0</div>
+        <div class="score-separator">VS</div>
+        <div class="team-score team-red" id="score-red">0</div>
+      </div>
+      <div class="mode-display" id="mode-display">DEATHMATCH</div>
+    </div>
+
+    <!-- Kill Feed -->
+    <div class="kill-feed" id="kill-feed"></div>
+
+    <!-- Crosshair -->
+    <div class="crosshair" id="crosshair">
+      <div class="crosshair-line top"></div>
+      <div class="crosshair-line bottom"></div>
+      <div class="crosshair-line left"></div>
+      <div class="crosshair-line right"></div>
+      <div class="crosshair-dot"></div>
+    </div>
+
+    <!-- Hit Marker -->
+    <div class="hit-marker hidden" id="hit-marker">
+      <div class="hit-line"></div>
+      <div class="hit-line"></div>
+      <div class="hit-line"></div>
+      <div class="hit-line"></div>
+    </div>
+
+    <!-- Damage Indicators -->
+    <div class="damage-indicators" id="damage-indicators"></div>
+
+    <!-- Minimap -->
+    <div class="minimap" id="minimap">
+      <canvas id="minimap-canvas" width="180" height="180"></canvas>
+      <div class="minimap-player"></div>
+    </div>
+
+    <!-- Interaction Prompt -->
+    <div class="interact-prompt hidden" id="interact-prompt">
+      <span class="interact-key">E</span>
+      <span class="interact-text" id="interact-text">Pick Up</span>
+    </div>
+
+    <!-- Scoreboard (Tab) -->
+    <div class="scoreboard hidden" id="scoreboard">
+      <div class="scoreboard-header">
+        <h2 id="scoreboard-mode">DEATHMATCH</h2>
+        <span id="scoreboard-map">MAP: ARENA</span>
+      </div>
+      <table class="scoreboard-table">
+        <thead>
+          <tr>
+            <th>RANK</th>
+            <th>PLAYER</th>
+            <th>KILLS</th>
+            <th>DEATHS</th>
+            <th>K/D</th>
+            <th>SCORE</th>
+          </tr>
+        </thead>
+        <tbody id="scoreboard-body"></tbody>
+      </table>
+    </div>
+
+    <!-- Weapon Switch UI -->
+    <div class="weapon-switch hidden" id="weapon-switch">
+      <div class="weapon-slot" data-slot="1">
+        <span class="slot-key">1</span>
+        <span class="slot-name" id="slot-1-name">AK-47</span>
+      </div>
+      <div class="weapon-slot" data-slot="2">
+        <span class="slot-key">2</span>
+        <span class="slot-name" id="slot-2-name">Pistol</span>
+      </div>
+      <div class="weapon-slot" data-slot="3">
+        <span class="slot-key">3</span>
+        <span class="slot-name" id="slot-3-name">Knife</span>
+      </div>
+    </div>
+
+    <!-- Chat -->
+    <div class="chat-container" id="chat-container">
+      <div class="chat-messages" id="chat-messages"></div>
+      <div class="chat-input-container hidden" id="chat-input-container">
+        <span class="chat-label" id="chat-label">[ALL]</span>
+        <input type="text" id="chat-input" placeholder="Type a message..." maxlength="128">
+      </div>
+    </div>
+  </div>
+
+  <!-- Pause Menu -->
+  <div id="pause-menu" class="hidden">
+    <div class="pause-overlay"></div>
+    <div class="pause-container">
+      <h2>PAUSED</h2>
+      <button class="pause-btn" id="btn-resume">RESUME</button>
+      <button class="pause-btn" id="btn-settings-pause">SETTINGS</button>
+      <button class="pause-btn danger" id="btn-quit">LEAVE MATCH</button>
+    </div>
+  </div>
+
+  <!-- Death Screen -->
+  <div id="death-screen" class="hidden">
+    <div class="death-overlay">
+      <h2 class="death-text">YOU DIED</h2>
+      <p class="killed-by">Killed by: <span id="killed-by-name">Enemy</span></p>
+      <div class="respawn-timer">Respawning in <span id="respawn-timer">3</span>s</div>
+    </div>
+  </div>
+
+  <!-- Kill Notification -->
+  <div id="kill-notification" class="hidden">
+    <div class="kill-medal" id="kill-medal">🎖</div>
+    <div class="kill-info">
+      <span class="kill-type" id="kill-type">ELIMINATED</span>
+      <span class="kill-target" id="kill-target">Enemy</span>
+    </div>
+  </div>
+
+  <!-- Match End Screen -->
+  <div id="match-end" class="hidden">
+    <div class="match-end-overlay">
+      <h1 id="match-result">VICTORY</h1>
+      <div class="match-stats">
+        <div class="stat-item">
+          <span class="stat-label">KILLS</span>
+          <span class="stat-value" id="end-kills">0</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">DEATHS</span>
+          <span class="stat-value" id="end-deaths">0</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">K/D RATIO</span>
+          <span class="stat-value" id="end-kd">0.00</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">HEADSHOTS</span>
+          <span class="stat-value" id="end-headshots">0</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">ACCURACY</span>
+          <span class="stat-value" id="end-accuracy">0%</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">XP EARNED</span>
+          <span class="stat-value xp-earned" id="end-xp">+0</span>
+        </div>
+      </div>
+      <div class="match-xp-bar">
+        <div class="xp-bar-fill" id="end-xp-bar"></div>
+        <span class="xp-level-text">LEVEL <span id="end-level">1</span></span>
+      </div>
+      <button class="action-btn" id="btn-back-menu">BACK TO MENU</button>
+    </div>
+  </div>
+
+  <!-- Game Canvas -->
+  <canvas id="game-canvas"></canvas>
+
+  <script type="module" src="main.js"></script>
+</body>
+</html>
