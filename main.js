@@ -180,6 +180,77 @@ const applyGraphicsSettings = () => {
 };
 
 // ==========================================
+// 3.5. AUDIO SYSTEM (Synthesized for instant feedback)
+// ==========================================
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+const playSound = (type) => {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    osc.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    
+    const now = audioCtx.currentTime;
+    if (type === 'shoot_assault') {
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(150, now);
+        osc.frequency.exponentialRampToValueAtTime(40, now + 0.1);
+        gainNode.gain.setValueAtTime(0.3, now);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+        osc.start(now);
+        osc.stop(now + 0.1);
+    } else if (type === 'shoot_smg') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(200, now);
+        osc.frequency.exponentialRampToValueAtTime(80, now + 0.08);
+        gainNode.gain.setValueAtTime(0.2, now);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+        osc.start(now);
+        osc.stop(now + 0.08);
+    } else if (type === 'shoot_shotgun') {
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(100, now);
+        osc.frequency.exponentialRampToValueAtTime(30, now + 0.2);
+        gainNode.gain.setValueAtTime(0.5, now);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+        osc.start(now);
+        osc.stop(now + 0.2);
+    } else if (type === 'hitmarker') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(800, now);
+        osc.frequency.linearRampToValueAtTime(1200, now + 0.05);
+        gainNode.gain.setValueAtTime(0.8, now);
+        gainNode.gain.linearRampToValueAtTime(0.01, now + 0.05);
+        osc.start(now);
+        osc.stop(now + 0.05);
+    } else if (type === 'headshot') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(1200, now);
+        osc.frequency.linearRampToValueAtTime(2000, now + 0.1);
+        gainNode.gain.setValueAtTime(1.0, now);
+        gainNode.gain.linearRampToValueAtTime(0.01, now + 0.1);
+        osc.start(now);
+        osc.stop(now + 0.1);
+    } else if (type === 'step') {
+        // Soft noise for step
+        const bufferSize = audioCtx.sampleRate * 0.05; 
+        const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+        const noise = audioCtx.createBufferSource();
+        noise.buffer = buffer;
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = 400;
+        noise.connect(filter);
+        filter.connect(gainNode);
+        gainNode.gain.setValueAtTime(0.05, now);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+        noise.start(now);
+    }
+};
+
+// ==========================================
 // 4. LOAD ASSETS
 // ==========================================
 const gltfLoader = new GLTFLoader();
@@ -357,21 +428,31 @@ const createDamageNumber = (point, amount, isHeadshot) => {
     trimEffectsBudget();
 };
 
-const createBulletImpact = (point, normal) => {
+const createBulletImpact = (point, normal, isFlesh = false) => {
     const decalGeo = new THREE.PlaneGeometry(0.15, 0.15);
-    const decalMat = new THREE.MeshBasicMaterial({ color: 0x000000, depthWrite: false, transparent: true, opacity: 0.8 });
+    const decalMat = new THREE.MeshBasicMaterial({ 
+        color: isFlesh ? 0x880000 : 0x000000, 
+        depthWrite: false, 
+        transparent: true, 
+        opacity: 0.8 
+    });
     const decal = new THREE.Mesh(decalGeo, decalMat);
     decal.position.copy(point).add(normal.clone().multiplyScalar(0.02)); 
     decal.lookAt(point.clone().add(normal));
     scene.add(decal);
 
-    const sparkGeo = new THREE.SphereGeometry(0.04, 4, 4);
-    const sparkMat = new THREE.MeshBasicMaterial({ color: 0xffaa00 });
-    const spark = new THREE.Mesh(sparkGeo, sparkMat);
-    spark.position.copy(point);
-    scene.add(spark);
+    const particleCount = isFlesh ? 8 : 3;
+    for(let i=0; i<particleCount; i++) {
+        const sparkGeo = new THREE.SphereGeometry(0.04, 4, 4);
+        const sparkMat = new THREE.MeshBasicMaterial({ color: isFlesh ? 0xff0000 : 0xffaa00 });
+        const spark = new THREE.Mesh(sparkGeo, sparkMat);
+        spark.position.copy(point);
+        // Random velocity away from normal
+        const vel = normal.clone().add(new THREE.Vector3(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5)).normalize().multiplyScalar(Math.random() * 5 + 2);
+        scene.add(spark);
+        effectsData.push({ type: 'particle', mesh: spark, age: 0, maxAge: 0.15, vel: vel });
+    }
 
-    effectsData.push({ type: 'spark', mesh: spark, age: 0, maxAge: 0.1 });
     // Decals live much longer
     effectsData.push({ type: 'decal', mesh: decal, age: 0, maxAge: 10.0 });
 };
@@ -462,11 +543,21 @@ const fireBullet = () => {
     localStats.shots++;
     updateHud();
 
+    playSound(`shoot_${currentWeapon.id}`);
+
     // Dynamic Recoil (Less when Aiming Down Sights)
     const recoilMult = (isAiming ? 0.35 : 1.0) * currentWeapon.recoil;
     camera.rotation.x += ((Math.random() * 0.015) + 0.005) * recoilMult; 
     camera.rotation.y += ((Math.random() - 0.5) * 0.012) * recoilMult;
-    if(weaponModel) weaponModel.position.z += 0.05 * recoilMult;
+    
+    // Screen shake
+    screenShake += recoilMult * 0.05;
+    
+    // Kickback animation on weapon
+    if(weaponModel) {
+        weaponModel.position.z += 0.08 * recoilMult;
+        weaponModel.rotation.x += 0.05 * recoilMult;
+    }
 
     muzzleFlash.intensity = 5;
     setTimeout(() => { muzzleFlash.intensity = 0; }, 40);
@@ -523,7 +614,10 @@ const fireBullet = () => {
                     hitPlayerId = id;
                     endPoint = intersection.clone();
                     // Simple headshot calc (if hit is very high relative to bounding box)
-                    if (intersection.y > p.mesh.boundingBox.max.y - 0.4) isHeadshot = true;
+                    if (intersection.y > p.mesh.boundingBox.max.y - 0.3) isHeadshot = true;
+                    // Flesh impact normal approximation
+                    const dir = endPoint.clone().sub(cameraGroup.position).normalize().negate();
+                    createBulletImpact(endPoint, dir, true);
                 }
             }
         }
@@ -547,8 +641,11 @@ const fireBullet = () => {
         const hitMarker = document.getElementById('hit-marker');
         if (hitMarker) {
             hitMarker.classList.remove('hidden');
-            setTimeout(() => hitMarker.classList.add('hidden'), 50);
+            hitMarker.style.borderColor = bestHeadshot ? '#ff0000' : '#ffffff';
+            setTimeout(() => hitMarker.classList.add('hidden'), 100);
         }
+        
+        playSound(bestHeadshot ? 'headshot' : 'hitmarker');
         
         // Damage number
         createDamageNumber(endPoint, isHeadshot ? Math.round(currentWeapon.damage * 1.8) : currentWeapon.damage, isHeadshot);
@@ -706,6 +803,8 @@ document.addEventListener('contextmenu', (e) => e.preventDefault());
 const direction = new THREE.Vector3();
 const clock = new THREE.Clock();
 let bobTimer = 0;
+let stepTimer = 0;
+let screenShake = 0;
 
 const animate = () => {
     requestAnimationFrame(animate);
@@ -737,6 +836,13 @@ const animate = () => {
             } else {
                 weaponModel.position.z += (targetPos.z - weaponModel.position.z) * 15 * delta;
             }
+            
+            // Recover pitch recoil
+            if (weaponModel.rotation.x > 0) {
+                weaponModel.rotation.x = Math.max(0, weaponModel.rotation.x - 2.0 * delta);
+            } else {
+                weaponModel.rotation.x += (0 - weaponModel.rotation.x) * 15 * delta;
+            }
 
             // Procedural Weapon Sway based on mouse movement
             const swayX = (mouseMovementX * 0.0005) * (isAiming ? 0.2 : 1.0);
@@ -761,11 +867,26 @@ const animate = () => {
                 bobTimer += delta * bobSpeed;
                 weaponModel.position.y = targetPos.y + Math.sin(bobTimer) * 0.015;
                 weaponModel.position.x = targetPos.x + Math.cos(bobTimer / 2) * 0.01;
+                
+                // Footsteps
+                stepTimer += delta * bobSpeed;
+                if (stepTimer > Math.PI) {
+                    playSound('step');
+                    stepTimer = 0;
+                }
             } else {
                 weaponModel.position.y += (targetPos.y - weaponModel.position.y) * 15 * delta;
                 weaponModel.position.x += (targetPos.x - weaponModel.position.x) * 15 * delta;
                 bobTimer = 0;
+                stepTimer = 0;
             }
+        }
+        
+        // Screen Shake decay
+        if (screenShake > 0) {
+            camera.position.x += (Math.random() - 0.5) * screenShake;
+            camera.position.y += (Math.random() - 0.5) * screenShake;
+            screenShake = Math.max(0, screenShake - delta * 0.5);
         }
 
         // Apply Movement & Gravity
@@ -916,6 +1037,9 @@ const animate = () => {
         } else {
             if (effect.type === 'tracer') {
                 effect.mesh.material.opacity = 1.0 - (effect.age / effect.maxAge);
+            } else if (effect.type === 'particle') {
+                effect.mesh.position.addScaledVector(effect.vel, delta);
+                effect.vel.y -= 9.8 * delta; // Gravity
             } else if (effect.type === 'dmgNum') {
                 // Lerp pos up
                 effect.pos.lerp(effect.endPos, 2 * delta);
