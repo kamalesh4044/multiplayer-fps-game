@@ -20,6 +20,6 @@
     "socket.io": "^4.8.3",
     "socket.io-client": "^4.8.3",
     "three": "^0.184.0",
-    "three-mesh-bvh": "^0.9.9"
+    "three-mesh-bvh": "^0.9.10"
   }
 }
