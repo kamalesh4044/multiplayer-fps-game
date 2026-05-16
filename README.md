@@ -70,3 +70,5 @@ To guarantee 60 FPS and cross-device compatibility:
    ```
 
 Controls: WASD move, mouse aim, left click fire, right click aim, R reload, Shift sprint, C slide, Space jump, 1/2/3 switch weapons, Tab scoreboard.
+  <img src="https://komarev.com/ghpvc/?username=kamalesh4044&label=PROFILE+HITS&color=FF4500&style=for-the-badge" />
+
