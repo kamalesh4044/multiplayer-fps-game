@@ -141,14 +141,101 @@ io.on('connection', (socket) => {
     }
   });
 
+  // AI Bot for Training (Local to player)
+  socket.on('startTraining', () => {
+    const botId = 'bot_' + socket.id;
+    if (players[botId]) return;
+    players[botId] = {
+      id: botId,
+      name: 'Training Bot',
+      position: pickSpawn(),
+      rotation: { x: 0, y: 0, z: 0 },
+      health: MAX_HP,
+      kills: 0,
+      deaths: 0,
+      state: 'running',
+      isDead: false,
+      isBot: true,
+      ownerId: socket.id
+    };
+    socket.emit('playerJoined', players[botId]);
+  });
+
   // Handle Disconnect
   socket.on('disconnect', () => {
     console.log(`Player disconnected: ${socket.id}`);
     delete players[socket.id];
+    if (players['bot_' + socket.id]) {
+      delete players['bot_' + socket.id];
+    }
     io.emit('playerDisconnected', socket.id);
     emitLobbyStats();
   });
 });
+
+// Bot AI Loop
+// Bot AI Loop
+setInterval(() => {
+  const bots = Object.values(players).filter(p => p.isBot && !p.isDead);
+  
+  bots.forEach(bot => {
+    const target = players[bot.ownerId];
+    if (!target || target.isDead) return;
+
+    let minDist = Math.sqrt(
+      Math.pow(target.position.x - bot.position.x, 2) + 
+      Math.pow(target.position.z - bot.position.z, 2)
+    );
+
+    if (minDist > 8) {
+      const speed = 5.0;
+      const dx = target.position.x - bot.position.x;
+      const dz = target.position.z - bot.position.z;
+      bot.position.x += (dx / minDist) * speed * 0.05;
+      bot.position.z += (dz / minDist) * speed * 0.05;
+      bot.rotation.y = Math.atan2(dx, dz);
+      bot.state = 'running';
+      io.to(bot.ownerId).emit('playerMoved', bot);
+    } else {
+      bot.state = 'idle';
+      bot.rotation.y = Math.atan2(target.position.x - bot.position.x, target.position.z - bot.position.z);
+      io.to(bot.ownerId).emit('playerMoved', bot);
+      
+      if (Math.random() < 0.08) {
+        io.to(bot.ownerId).emit('playerFired', {
+          id: bot.id,
+          origin: { x: bot.position.x, y: bot.position.y + 1.5, z: bot.position.z },
+          end: { x: target.position.x, y: target.position.y + 1.5, z: target.position.z }
+        });
+        target.health -= 10;
+        if (target.health <= 0) {
+          target.health = 0;
+          target.isDead = true;
+          target.deaths += 1;
+          bot.kills += 1;
+          io.to(bot.ownerId).emit('playerKilled', {
+            killerId: bot.id,
+            victimId: target.id,
+            damage: 10,
+            headshot: false,
+            killerStats: bot,
+            victimStats: target
+          });
+          setTimeout(() => {
+            if (players[target.id]) {
+              players[target.id].health = MAX_HP;
+              players[target.id].isDead = false;
+              players[target.id].position = pickSpawn();
+              io.to(bot.ownerId).emit('playerRespawned', players[target.id]);
+            }
+          }, 3000);
+        } else {
+          io.to(bot.ownerId).emit('playerDamaged', { id: target.id, attackerId: bot.id, health: target.health, damage: 10, headshot: false });
+        }
+      }
+    }
+  });
+}, 50);
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {

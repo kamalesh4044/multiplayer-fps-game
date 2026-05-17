@@ -48,7 +48,9 @@ const WEAPONS = {
         recoil: 1,
         spread: 0.006,
         adsFov: 52,
-        scale: 0.015,
+        scale: 0.014,
+        basePos: new THREE.Vector3(0.18, -0.22, -0.42),
+        adsPos: new THREE.Vector3(0.01, -0.19, -0.36),
         stats: { damage: 62, firerate: 82, accuracy: 70, range: 72, mobility: 64 }
     },
     smg: {
@@ -62,7 +64,9 @@ const WEAPONS = {
         recoil: 0.65,
         spread: 0.011,
         adsFov: 56,
-        scale: 0.017,
+        scale: 0.005,
+        basePos: new THREE.Vector3(0.18, -0.20, -0.40),
+        adsPos: new THREE.Vector3(0.0, -0.18, -0.35),
         stats: { damage: 45, firerate: 96, accuracy: 56, range: 45, mobility: 88 }
     },
     shotgun: {
@@ -77,7 +81,9 @@ const WEAPONS = {
         recoil: 1.75,
         spread: 0.045,
         adsFov: 58,
-        scale: 0.016,
+        scale: 0.040,
+        basePos: new THREE.Vector3(0.20, -0.24, -0.45),
+        adsPos: new THREE.Vector3(0.01, -0.20, -0.36),
         stats: { damage: 92, firerate: 34, accuracy: 38, range: 28, mobility: 54 }
     }
 };
@@ -306,7 +312,7 @@ gltfLoader.load(map.path, (gltf) => {
     mapMesh.position.set(0, offsetY, 0);
     mapMesh.updateMatrixWorld(true);
     tempBox.setFromObject(mapMesh);
-    spawnPoint.set(0, tempBox.max.y + 3.0, 0);
+    tempBox.setFromObject(mapMesh);
 
     const geometries = [];
     mapMesh.traverse((child) => {
@@ -334,14 +340,14 @@ gltfLoader.load(map.path, (gltf) => {
 
 loadMap(selectedMap, checkLoadStatus);
 
-gltfLoader.load('/models/call_of_duty_black_ops_2_-_seal_team_six.glb', (gltf) => {
+gltfLoader.load('/models/player.glb', (gltf) => {
     playerModel = gltf.scene;
-    playerModel.scale.set(0.015, 0.015, 0.015); 
+    playerModel.animations = gltf.animations;
+    playerModel.scale.set(1.0, 1.0, 1.0); 
     checkLoadStatus();
 }, undefined, () => checkLoadStatus());
 
-const BASE_WEAPON_POS = new THREE.Vector3(0.28, -0.26, -0.48);
-const ADS_WEAPON_POS = new THREE.Vector3(0.012, -0.19, -0.36);
+// Positions are now defined per weapon in the WEAPONS config.
 
 const equipWeapon = (weaponId, countLoad = false) => {
     const nextWeapon = WEAPONS[weaponId] || WEAPONS.assault;
@@ -361,7 +367,22 @@ const equipWeapon = (weaponId, countLoad = false) => {
                 child.receiveShadow = true;
             }
         });
-        weaponModel.position.copy(BASE_WEAPON_POS); 
+        // Add Simple Arms
+        const armGeo = new THREE.CylinderGeometry(0.02, 0.025, 0.4, 8);
+        const armMat = new THREE.MeshLambertMaterial({ color: 0x2a2a2a }); // dark gloves
+        const rightArm = new THREE.Mesh(armGeo, armMat);
+        rightArm.position.set(-0.05, -0.05, -0.1); 
+        rightArm.rotation.x = Math.PI / 2;
+        rightArm.rotation.z = -0.1;
+        weaponModel.add(rightArm);
+        
+        const leftArm = new THREE.Mesh(armGeo, armMat);
+        leftArm.position.set(-0.15, 0.05, 0.2); 
+        leftArm.rotation.x = Math.PI / 2;
+        leftArm.rotation.z = 0.2;
+        weaponModel.add(leftArm);
+
+        weaponModel.position.copy(currentWeapon.basePos); 
         weaponModel.rotation.set(0, Math.PI - 0.05, 0); 
         camera.add(weaponModel);
         updateHud();
@@ -386,7 +407,7 @@ gltfLoader.load(currentWeapon.path, (gltf) => {
     weaponCache[currentWeapon.id] = gltf.scene;
     weaponModel = gltf.scene.clone();
     weaponModel.scale.set(currentWeapon.scale, currentWeapon.scale, currentWeapon.scale);
-    weaponModel.position.copy(BASE_WEAPON_POS); 
+    weaponModel.position.copy(currentWeapon.basePos); 
     weaponModel.rotation.set(0, Math.PI - 0.05, 0); 
     camera.add(weaponModel); 
     checkLoadStatus();
@@ -478,11 +499,26 @@ const createTracer = (startPoint, endPoint) => {
 const addRemotePlayer = (id, data) => {
     if (!playerModel || id === myId || players[id]) return;
     const mesh = playerModel.clone();
+
+    let mixer = null;
+    if (playerModel.animations && playerModel.animations.length > 0) {
+        mixer = new THREE.AnimationMixer(mesh);
+        const action = mixer.clipAction(playerModel.animations[0]);
+        action.play();
+    }
+
+    const gunGeo = new THREE.BoxGeometry(0.1, 0.1, 0.6);
+    const gunMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
+    const gunMesh = new THREE.Mesh(gunGeo, gunMat);
+    gunMesh.position.set(0.2, 1.0, 0.4); 
+    mesh.add(gunMesh);
+
     mesh.position.copy(data.position);
     mesh.boundingBox = new THREE.Box3().setFromObject(mesh);
     scene.add(mesh);
     players[id] = { 
         mesh: mesh, 
+        mixer: mixer,
         data: data,
         name: data.name || `Soldier_${id.slice(0, 4)}`,
         targetPosition: new THREE.Vector3().copy(data.position),
@@ -506,6 +542,18 @@ socket.on('playerMoved', (data) => {
 socket.on('playerDisconnected', (id) => {
     if (players[id]) { scene.remove(players[id].mesh); delete players[id]; }
     updateScoreboard();
+});
+socket.on('playerRespawned', (data) => {
+    if (data.id === myId) {
+        cameraGroup.position.copy(data.position);
+        localStats.health = 100;
+        isDead = false;
+        updateHud();
+    } else if (players[data.id]) {
+        players[data.id].mesh.position.copy(data.position);
+        players[data.id].targetPosition.copy(data.position);
+        players[data.id].isDead = false;
+    }
 });
 socket.on('lobbyStats', (data) => {
     if (onlineCount) onlineCount.innerText = data.online || 0;
@@ -689,15 +737,32 @@ const startMatch = () => {
     document.getElementById('pause-menu')?.classList.add('hidden');
     isMatchActive = true;
     controls.lock();
-    cameraGroup.position.copy(spawnPoint);
+
+    // Use server spawn point if available, else pick a random edge spawn
+    if (players[myId] && players[myId].position) {
+        cameraGroup.position.copy(players[myId].position);
+    } else {
+        const spawns = [
+            new THREE.Vector3(18, 8, 16),
+            new THREE.Vector3(-18, 8, -16),
+            new THREE.Vector3(24, 8, -8),
+            new THREE.Vector3(-24, 8, 8)
+        ];
+        cameraGroup.position.copy(spawns[Math.floor(Math.random() * spawns.length)]);
+    }
     velocity.set(0,0,0);
     localStats.health = 100;
     localStats.armor = 100;
+    isDead = false;
     updateHud();
 };
 
 document.getElementById('btn-play').addEventListener('click', () => {
     document.getElementById('mode-select')?.classList.remove('hidden');
+});
+document.getElementById('btn-training')?.addEventListener('click', () => {
+    socket.emit('startTraining');
+    startMatch();
 });
 
 controls.addEventListener('lock', () => { document.getElementById('game-hud').classList.remove('hidden'); });
@@ -828,7 +893,7 @@ const animate = () => {
 
         // Realistic Gun Bobbing, Recoil, and Procedural Sway
         if (weaponModel && !isReloading) {
-            const targetPos = isAiming ? ADS_WEAPON_POS : BASE_WEAPON_POS;
+            const targetPos = isAiming ? currentWeapon.adsPos : currentWeapon.basePos;
             
             // Recover from recoil
             if (weaponModel.position.z > targetPos.z) {
@@ -1015,11 +1080,39 @@ const animate = () => {
     Object.keys(players).forEach(id => {
         const p = players[id];
         if (p.mesh && p.targetPosition) {
-            // Lerp position for smooth network movement
-            p.mesh.position.lerp(p.targetPosition, 10 * delta);
+            // Lerp X and Z
+            p.mesh.position.x += (p.targetPosition.x - p.mesh.position.x) * 10 * delta;
+            p.mesh.position.z += (p.targetPosition.z - p.mesh.position.z) * 10 * delta;
             
+            // Gravity and Ground Snapping
+            p.mesh.userData.velocityY = (p.mesh.userData.velocityY || 0) - 24 * delta;
+            p.mesh.position.y += p.mesh.userData.velocityY * delta;
+            
+            if (mapCollider) {
+                shootRaycaster.set(new THREE.Vector3(p.mesh.position.x, p.mesh.position.y + 1, p.mesh.position.z), new THREE.Vector3(0, -1, 0));
+                const hits = shootRaycaster.intersectObject(mapCollider);
+                if (hits.length > 0 && hits[0].distance <= 1.2) {
+                    p.mesh.position.y = hits[0].point.y;
+                    p.mesh.userData.velocityY = 0;
+                }
+            }
+
             // Simple rotation lerp
             p.mesh.rotation.y += (p.targetRotationY - p.mesh.rotation.y) * 10 * delta;
+
+            // Procedural humanlike bobbing and lean
+            const distSq = Math.pow(p.targetPosition.x - p.mesh.position.x, 2) + Math.pow(p.targetPosition.z - p.mesh.position.z, 2);
+            if (distSq > 0.01) {
+                p.mesh.userData.bobTimer = (p.mesh.userData.bobTimer || 0) + delta * 15;
+                const bobOffset = Math.abs(Math.sin(p.mesh.userData.bobTimer)) * 0.05;
+                p.mesh.position.y += bobOffset;
+                p.mesh.rotation.x = 0.1; // lean forward
+                if (p.mixer) p.mixer.update(delta);
+            } else {
+                p.mesh.rotation.x = 0;
+                // If idle, maybe play a different animation or just idle update
+                if (p.mixer) p.mixer.update(delta * 0.2); 
+            }
             
             // Update bounding box continuously
             p.mesh.boundingBox.setFromObject(p.mesh);
