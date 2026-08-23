@@ -2,9 +2,14 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
+const cookieParser = require('cookie-parser');
+const csrf = require('csurf');
 
 const app = express();
 const server = http.createServer(app);
+
+app.use(cookieParser());
+app.use(csrf({ cookie: true }));
 
 app.use(express.static(path.join(__dirname, 'dist')));
 app.use('/models', express.static(path.join(__dirname, 'public', 'models')));
